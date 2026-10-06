@@ -1,1 +1,357 @@
-{"active":false,"connections":{"AI Score Lead":{"main":[[{"index":0,"node":"Parse Score","type":"main"}]]},"Is Hot Lead?":{"main":[[{"index":0,"node":"Send Hot-Lead Email","type":"main"}],[{"index":0,"node":"Log to Nurture Sheet","type":"main"}]]},"New Lead Webhook":{"main":[[{"index":0,"node":"AI Score Lead","type":"main"}]]},"Parse Score":{"main":[[{"index":0,"node":"Is Hot Lead?","type":"main"}]]},"Send Hot-Lead Email":{"main":[[{"index":0,"node":"Log to CRM Sheet","type":"main"}]]}},"name":"AI Lead Qualifier → Smart Follow-up (Template)","nodes":[{"id":"a1a1a1a1-b2b2-c3c3-d4d4-e5e5f6a7b8c9","name":"New Lead Webhook","parameters":{"httpMethod":"POST","options":{},"path":"new-lead","responseMode":"onReceived"},"position":[240,300],"type":"n8n-nodes-base.webhook","typeVersion":2,"webhookId":"new-lead-hook"},{"id":"b2b2b2b2-c3c3-d4d4-e5e5-f6a7b8c9d0e1","name":"Setup Notes","parameters":{"color":5,"content":"## How to use\n1. Point any website form / GoHighLevel form webhook at this trigger URL.\n2. Expected JSON: { \"name\", \"email\", \"phone\", \"service\", \"message\" }\n3. Add your OpenAI, Gmail and Google Sheets credentials below, then activate.\n4. Hot leads (score >= 70) get an instant personal email; everyone is logged.","height":300,"width":440},"position":[200,80],"type":"n8n-nodes-base.stickyNote","typeVersion":1},{"credentials":{"openAiApi":{"id":"REPLACE_WITH_OPENAI_CRED_ID","name":"OpenAI account"}},"id":"c3c3c3c3-d4d4-e5e5-f6f6-a7b8c9d0e1f2","name":"AI Score Lead","parameters":{"messages":{"values":[{"content":"You are a lead-qualification assistant for a home-services business. Score this lead 0-100 and reply with ONLY valid JSON: {\"score\": <number>, \"category\": \"hot|warm|cold\", \"reason\": \"<one short sentence>\"}.\n\nName: {{ $json.name }}\nEmail: {{ $json.email }}\nPhone: {{ $json.phone }}\nService needed: {{ $json.service }}\nMessage: {{ $json.message }}\n\nScore high for: urgent service words (emergency, ASAP, today), phone provided, specific service named. Score low for: vague messages, no contact info, price shoppers with no details.","role":"system"}]},"model":"gpt-4o-mini","options":{"maxTokens":200,"temperature":0.3}},"position":[480,300],"type":"@n8n/n8n-nodes-langchain.openAi","typeVersion":1.8},{"id":"d4d4d4d4-e5e5-f6f6-a7a7-b8c9d0e1f2a3","name":"Parse Score","parameters":{"jsCode":"const raw = $input.first().json.message?.content || $input.first().json.content || '';\nconst cleaned = raw.replace(/```json|```/g, '').trim();\nlet parsed;\ntry { parsed = JSON.parse(cleaned); } catch (e) { parsed = { score: 50, category: 'warm', reason: 'parse-fallback' }; }\nreturn [{ json: { ...$input.first().json.lead, ...parsed } }];"},"position":[700,300],"type":"n8n-nodes-base.code","typeVersion":2},{"id":"e5e5e5e5-f6f6-a7a7-b8b8-c9d0e1f2a3b4","name":"Is Hot Lead?","parameters":{"conditions":{"number":[{"operation":"largerEqual","value1":"={{ $json.score }}","value2":70}]}},"position":[920,300],"type":"n8n-nodes-base.if","typeVersion":1},{"credentials":{"gmailOAuth2":{"id":"REPLACE_WITH_GMAIL_CRED_ID","name":"Gmail account"}},"id":"f6f6f6f6-a7a7-b8b8-c9c9-d0e1f2a3b4c5","name":"Send Hot-Lead Email","parameters":{"emailType":"text","message":"Hi {{ $json.name }},\n\nThanks for reaching out about {{ $json.service }} — this sounds time-sensitive, so I wanted to reply personally within minutes, not days.\n\nI can usually schedule an estimate within 24-48 hours. What day works best for you?\n\nBest,\n{{ $env.SENDER_NAME }}\n{{ $env.BUSINESS_NAME }} | {{ $env.BUSINESS_PHONE }}","options":{},"sendTo":"={{ $json.email }}","subject":"=Re: your {{ $json.service }} request — quick reply"},"position":[1140,200],"type":"n8n-nodes-base.gmail","typeVersion":2.1},{"credentials":{"googleSheetsOAuth2Api":{"id":"REPLACE_WITH_SHEETS_CRED_ID","name":"Google Sheets account"}},"id":"a7a7a7a7-b8b8-c9c9-d0d0-e1f2a3b4c5d6","name":"Log to CRM Sheet","parameters":{"columns":{"mappingMode":"defineBelow","value":{"email":"={{ $json.email }}","name":"={{ $json.name }}","phone":"={{ $json.phone }}","reason":"={{ $json.reason }}","score":"={{ $json.score }}","service":"={{ $json.service }}","status":"={{ $json.category }}"}},"options":{}},"documentId":"={{ $env.LEADS_SHEET_ID }}","sheetName":"Leads"},"position":[1360,200],"type":"n8n-nodes-base.googleSheets","typeVersion":4.2},{"credentials":{"googleSheetsOAuth2Api":{"id":"REPLACE_WITH_SHEETS_CRED_ID","name":"Google Sheets account"}},"id":"b8b8b8b8-c9c9-d0d0-e1e1-f2a3b4c5d6e7","name":"Log to Nurture Sheet","parameters":{"columns":{"mappingMode":"defineBelow","value":{"email":"={{ $json.email }}","name":"={{ $json.name }}","phone":"={{ $json.phone }}","reason":"={{ $json.reason }}","score":"={{ $json.score }}","service":"={{ $json.service }}","status":"nurture"}},"options":{}},"documentId":"={{ $env.LEADS_SHEET_ID }}","sheetName":"Leads"},"position":[1140,420],"type":"n8n-nodes-base.googleSheets","typeVersion":4.2}],"pinData":{},"settings":{"executionOrder":"v1"}}
+{
+ "name": "AI Lead Qualifier \u2192 Smart Follow-up (Template)",
+ "active": false,
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "pinData": {},
+ "nodes": [
+  {
+   "id": "a1",
+   "name": "New Lead Webhook",
+   "parameters": {
+    "httpMethod": "POST",
+    "path": "new-lead",
+    "responseMode": "onReceived",
+    "options": {}
+   },
+   "position": [
+    240,
+    300
+   ],
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2
+  },
+  {
+   "id": "a2",
+   "name": "Setup Notes",
+   "parameters": {
+    "color": 5,
+    "height": 340,
+    "width": 460,
+    "content": "## How to use\n1. Point any website form / GoHighLevel form webhook at this trigger URL.\n2. Expected JSON: { \"name\", \"email\", \"phone\", \"service\", \"message\" }\n3. Add your OpenAI, Gmail and Google Sheets credentials below.\n4. Attach the Global Error Handler (n8n-error-handler.json) via Settings > Error Workflow.\n5. Payloads with no email AND no phone are logged as invalid \u2014 no AI credits wasted."
+   },
+   "position": [
+    200,
+    80
+   ],
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1
+  },
+  {
+   "id": "a3",
+   "name": "Validate Input",
+   "parameters": {
+    "jsCode": "const j = $input.first().json;\nconst hasContact = !!((j.email && String(j.email).includes('@')) || (j.phone && String(j.phone).replace(/\\D/g,'').length >= 7));\nreturn [{ json: { ...j, hasContact } }];"
+   },
+   "position": [
+    480,
+    300
+   ],
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2
+  },
+  {
+   "id": "a4",
+   "name": "Has Contact Info?",
+   "parameters": {
+    "conditions": {
+     "boolean": [
+      {
+       "operation": "equal",
+       "value1": "={{ $json.hasContact }}",
+       "value2": true
+      }
+     ]
+    }
+   },
+   "position": [
+    700,
+    300
+   ],
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 1
+  },
+  {
+   "id": "a5",
+   "name": "AI Score Lead",
+   "parameters": {
+    "model": "gpt-4o-mini",
+    "options": {
+     "maxTokens": 200,
+     "temperature": 0.3
+    },
+    "messages": {
+     "values": [
+      {
+       "role": "system",
+       "content": "You are a lead-qualification assistant for a home-services business. Score this lead 0-100 and reply with ONLY valid JSON like {\"score\": 85, \"category\": \"hot\", \"reason\": \"one short sentence\"}. Score high for urgent words (emergency, ASAP, today), a phone number, and a specific service. Score low for vague messages or no contact info."
+      },
+      {
+       "role": "user",
+       "content": "Name: {{ $json.name }}\nEmail: {{ $json.email }}\nPhone: {{ $json.phone }}\nService: {{ $json.service }}\nMessage: {{ $json.message }}"
+      }
+     ]
+    }
+   },
+   "position": [
+    940,
+    220
+   ],
+   "type": "@n8n/n8n-nodes-langchain.openAi",
+   "typeVersion": 1.8,
+   "credentials": {
+    "openAiApi": {
+     "id": "REPLACE_WITH_OPENAI_CRED_ID",
+     "name": "OpenAI account"
+    }
+   }
+  },
+  {
+   "id": "a6",
+   "name": "Parse Score",
+   "parameters": {
+    "jsCode": "const raw = ($input.first().json.message && $input.first().json.message.content) || '';\nconst cleaned = String(raw).replace(/```json|```/g,'').trim();\nlet parsed;\ntry { parsed = JSON.parse(cleaned); } catch (e) { parsed = { score: 50, category: 'warm', reason: 'parse-fallback' }; }\nconst lead = $input.first().json;\nreturn [{ json: { name: lead.name, email: lead.email, phone: lead.phone, service: lead.service, message: lead.message, score: parsed.score, category: parsed.category, reason: parsed.reason } }];"
+   },
+   "position": [
+    1180,
+    220
+   ],
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2
+  },
+  {
+   "id": "a7",
+   "name": "Is Hot Lead?",
+   "parameters": {
+    "conditions": {
+     "number": [
+      {
+       "operation": "largerEqual",
+       "value1": "={{ $json.score }}",
+       "value2": 70
+      }
+     ]
+    }
+   },
+   "position": [
+    1420,
+    220
+   ],
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 1
+  },
+  {
+   "id": "a8",
+   "name": "Send Hot-Lead Email",
+   "parameters": {
+    "emailType": "text",
+    "sendTo": "={{ $json.email }}",
+    "subject": "=Re: your {{ $json.service }} request - quick reply",
+    "message": "Hi {{ $json.name }},\n\nThanks for reaching out about {{ $json.service }} - this sounds time-sensitive, so I wanted to reply personally within minutes, not days.\n\nI can usually schedule an estimate within 24-48 hours. What day works best for you?\n\nBest,\n{{ $env.SENDER_NAME }}\n{{ $env.BUSINESS_NAME }} | {{ $env.BUSINESS_PHONE }}",
+    "options": {}
+   },
+   "position": [
+    1660,
+    120
+   ],
+   "type": "n8n-nodes-base.gmail",
+   "typeVersion": 2.1,
+   "credentials": {
+    "gmailOAuth2": {
+     "id": "REPLACE_WITH_GMAIL_CRED_ID",
+     "name": "Gmail account"
+    }
+   }
+  },
+  {
+   "id": "a9",
+   "name": "Log to CRM Sheet",
+   "parameters": {
+    "documentId": "={{ $env.LEADS_SHEET_ID }}",
+    "sheetName": "Leads",
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "email": "={{ $json.email }}",
+      "name": "={{ $json.name }}",
+      "phone": "={{ $json.phone }}",
+      "reason": "={{ $json.reason }}",
+      "score": "={{ $json.score }}",
+      "service": "={{ $json.service }}",
+      "status": "={{ $json.category }}"
+     }
+    }
+   },
+   "position": [
+    1900,
+    120
+   ],
+   "type": "n8n-nodes-base.googleSheets",
+   "typeVersion": 4.2,
+   "credentials": {
+    "googleSheetsOAuth2Api": {
+     "id": "REPLACE_WITH_SHEETS_CRED_ID",
+     "name": "Google Sheets account"
+    }
+   }
+  },
+  {
+   "id": "a10",
+   "name": "Log to Nurture Sheet",
+   "parameters": {
+    "documentId": "={{ $env.LEADS_SHEET_ID }}",
+    "sheetName": "Leads",
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "email": "={{ $json.email }}",
+      "name": "={{ $json.name }}",
+      "phone": "={{ $json.phone }}",
+      "reason": "={{ $json.reason }}",
+      "score": "={{ $json.score }}",
+      "service": "={{ $json.service }}",
+      "status": "nurture"
+     }
+    }
+   },
+   "position": [
+    1660,
+    340
+   ],
+   "type": "n8n-nodes-base.googleSheets",
+   "typeVersion": 4.2,
+   "credentials": {
+    "googleSheetsOAuth2Api": {
+     "id": "REPLACE_WITH_SHEETS_CRED_ID",
+     "name": "Google Sheets account"
+    }
+   }
+  },
+  {
+   "id": "a11",
+   "name": "Log Invalid Payload",
+   "parameters": {
+    "documentId": "={{ $env.LEADS_SHEET_ID }}",
+    "sheetName": "Leads",
+    "columns": {
+     "mappingMode": "defineBelow",
+     "value": {
+      "email": "={{ $json.email }}",
+      "name": "={{ $json.name }}",
+      "phone": "={{ $json.phone }}",
+      "reason": "no valid email or phone",
+      "score": "0",
+      "service": "={{ $json.service }}",
+      "status": "invalid"
+     }
+    }
+   },
+   "position": [
+    940,
+    420
+   ],
+   "type": "n8n-nodes-base.googleSheets",
+   "typeVersion": 4.2,
+   "credentials": {
+    "googleSheetsOAuth2Api": {
+     "id": "REPLACE_WITH_SHEETS_CRED_ID",
+     "name": "Google Sheets account"
+    }
+   }
+  }
+ ],
+ "connections": {
+  "New Lead Webhook": {
+   "main": [
+    [
+     {
+      "node": "Validate Input",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Validate Input": {
+   "main": [
+    [
+     {
+      "node": "Has Contact Info?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Has Contact Info?": {
+   "main": [
+    [
+     {
+      "node": "AI Score Lead",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Log Invalid Payload",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "AI Score Lead": {
+   "main": [
+    [
+     {
+      "node": "Parse Score",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Parse Score": {
+   "main": [
+    [
+     {
+      "node": "Is Hot Lead?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Is Hot Lead?": {
+   "main": [
+    [
+     {
+      "node": "Send Hot-Lead Email",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Log to Nurture Sheet",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Send Hot-Lead Email": {
+   "main": [
+    [
+     {
+      "node": "Log to CRM Sheet",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ }
+}

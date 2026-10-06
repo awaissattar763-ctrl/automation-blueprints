@@ -1,0 +1,253 @@
+{
+ "name": "WhatsApp AI Auto-Reply \u2192 Owner Escalation (Template)",
+ "active": false,
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "pinData": {},
+ "nodes": [
+  {
+   "id": "w1",
+   "name": "WhatsApp Trigger",
+   "parameters": {
+    "updates": [
+     "messages"
+    ],
+    "options": {}
+   },
+   "position": [
+    240,
+    300
+   ],
+   "type": "n8n-nodes-base.whatsAppTrigger",
+   "typeVersion": 1,
+   "credentials": {
+    "whatsAppTriggerApi": {
+     "id": "REPLACE_WITH_WA_CRED_ID",
+     "name": "WhatsApp account"
+    }
+   }
+  },
+  {
+   "id": "w2",
+   "name": "Setup Notes",
+   "parameters": {
+    "color": 2,
+    "height": 360,
+    "width": 480,
+    "content": "## How to use\n1. Meta WhatsApp Cloud API is FREE for 1,000 conversations/month: developers.facebook.com > WhatsApp > API Setup.\n2. Connect your WhatsApp Business number in n8n credentials (permanent token).\n3. Set env vars: BUSINESS_NAME, OWNER_WHATSAPP (your number), FAQ_TEXT (services/hours/prices).\n4. Attach the Global Error Handler (n8n-error-handler.json).\n5. The AI replies in the customer's language; booking/price/urgent messages escalate to you instantly."
+   },
+   "position": [
+    200,
+    80
+   ],
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1
+  },
+  {
+   "id": "w3",
+   "name": "Extract Message",
+   "parameters": {
+    "jsCode": "const m = $input.first().json.entry?.[0]?.changes?.[0]?.value?.messages?.[0];\nif (!m || m.type !== 'text') return [];\nconst contact = $input.first().json.entry?.[0]?.changes?.[0]?.value?.contacts?.[0] || {};\nreturn [{ json: { from: m.from, text: m.text.body, name: contact.profile?.name || 'there', waId: m.id } }];"
+   },
+   "position": [
+    500,
+    300
+   ],
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2
+  },
+  {
+   "id": "w4",
+   "name": "AI Reply + Intent",
+   "parameters": {
+    "model": "gpt-4o-mini",
+    "options": {
+     "maxTokens": 300,
+     "temperature": 0.4
+    },
+    "messages": {
+     "values": [
+      {
+       "role": "system",
+       "content": "You are the WhatsApp assistant for {{ $env.BUSINESS_NAME }}. Business info: {{ $env.FAQ_TEXT }}. Reply in the SAME language the customer writes in. Keep replies under 40 words, warm and human. Reply with ONLY valid JSON like {\"reply\": \"your message\", \"intent\": \"booking|price|urgent|faq|other\"}. Mark intent urgent for pain/emergency/broken/urgent words, booking for appointment requests, price for cost questions."
+      },
+      {
+       "role": "user",
+       "content": "Customer {{ $json.name }} wrote: {{ $json.text }}"
+      }
+     ]
+    }
+   },
+   "position": [
+    740,
+    300
+   ],
+   "type": "@n8n/n8n-nodes-langchain.openAi",
+   "typeVersion": 1.8,
+   "credentials": {
+    "openAiApi": {
+     "id": "REPLACE_WITH_OPENAI_CRED_ID",
+     "name": "OpenAI account"
+    }
+   }
+  },
+  {
+   "id": "w5",
+   "name": "Parse AI Output",
+   "parameters": {
+    "jsCode": "const raw = ($input.first().json.message && $input.first().json.message.content) || '';\nlet p;\ntry { p = JSON.parse(String(raw).replace(/```json|```/g,'')); } catch(e) { p = { reply: 'Thanks for messaging {{ $env.BUSINESS_NAME }}! We will reply shortly.', intent: 'other' }; }\nconst prev = JSON.parse(JSON.stringify($('Extract Message').first().json));\nreturn [{ json: { ...prev, reply: p.reply, intent: p.intent } }];"
+   },
+   "position": [
+    980,
+    300
+   ],
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2
+  },
+  {
+   "id": "w6",
+   "name": "Needs Owner?",
+   "parameters": {
+    "conditions": {
+     "boolean": [
+      {
+       "operation": "equal",
+       "value1": "={{ ['booking','price','urgent'].includes($json.intent) }}",
+       "value2": true
+      }
+     ]
+    }
+   },
+   "position": [
+    1220,
+    300
+   ],
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 1
+  },
+  {
+   "id": "w7",
+   "name": "Send WhatsApp Reply",
+   "parameters": {
+    "resource": "message",
+    "operation": "send",
+    "to": "={{ $json.from }}",
+    "messageType": "text",
+    "text": "={{ $json.reply }}",
+    "options": {}
+   },
+   "position": [
+    1460,
+    220
+   ],
+   "type": "n8n-nodes-base.whatsApp",
+   "typeVersion": 1,
+   "credentials": {
+    "whatsAppApi": {
+     "id": "REPLACE_WITH_WA_CRED_ID",
+     "name": "WhatsApp account"
+    }
+   }
+  },
+  {
+   "id": "w8",
+   "name": "Alert Owner",
+   "parameters": {
+    "resource": "message",
+    "operation": "send",
+    "to": "={{ $env.OWNER_WHATSAPP }}",
+    "messageType": "text",
+    "text": "\u26a1 Hot WhatsApp lead ({{ $json.intent }}): {{ $json.name }} ({{ $json.from }}) wrote: \"{{ $json.text }}\". AI replied: \"{{ $json.reply }}\"",
+    "options": {}
+   },
+   "position": [
+    1460,
+    420
+   ],
+   "type": "n8n-nodes-base.whatsApp",
+   "typeVersion": 1,
+   "credentials": {
+    "whatsAppApi": {
+     "id": "REPLACE_WITH_WA_CRED_ID",
+     "name": "WhatsApp account"
+    }
+   }
+  }
+ ],
+ "connections": {
+  "WhatsApp Trigger": {
+   "main": [
+    [
+     {
+      "node": "Extract Message",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Extract Message": {
+   "main": [
+    [
+     {
+      "node": "AI Reply + Intent",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "AI Reply + Intent": {
+   "main": [
+    [
+     {
+      "node": "Parse AI Output",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Parse AI Output": {
+   "main": [
+    [
+     {
+      "node": "Needs Owner?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Needs Owner?": {
+   "main": [
+    [
+     {
+      "node": "Alert Owner",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Send WhatsApp Reply",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Alert Owner": {
+   "main": [
+    [
+     {
+      "node": "Send WhatsApp Reply",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ }
+}

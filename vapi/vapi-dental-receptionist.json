@@ -1,1 +1,137 @@
-{"analysisPlan":{"minMessages":2,"structuredDataPlan":{"enabled":true,"schema":{"properties":{"appointmentDay":{"description":"Preferred day for the appointment","type":"string"},"appointmentType":{"description":"cleaning, emergency, checkup, etc.","type":"string"},"callerName":{"type":"string"},"isEmergency":{"description":"True if the caller describes severe pain, swelling, or trauma","type":"boolean"},"phoneNumber":{"type":"string"}},"type":"object"}}},"artifactPlan":{"recordingEnabled":true,"transcriptPlan":{"enabled":true}},"backgroundSound":"office","firstMessage":"Hi, thanks for calling BrightSmile Dental Studio! This is Nora, the virtual receptionist. How can I help you today?","maxDurationSeconds":600,"model":{"maxTokens":300,"messages":[{"content":"You are Nora, the friendly virtual receptionist for BrightSmile Dental Studio, a family dental clinic open Monday to Friday, 9am to 6pm.\n\nYour job:\n1. Greet callers warmly and find out why they are calling.\n2. If it is a dental EMERGENCY (severe pain, swelling, knocked-out or broken tooth, bleeding that will not stop): say you are flagging it as urgent, take their name and number, and tell them the dentist will call back within 15 minutes. If pain is extreme, advise them to consider urgent care.\n3. If they want to BOOK or RESCHEDULE: collect name, phone number, preferred day, and appointment type (cleaning, checkup, tooth pain, cosmetic). Confirm the details back. Tell them the office will confirm the exact time by text shortly.\n4. If they ask about SERVICES, PRICES, or HOURS: answer briefly (cleanings, fillings, whitening, checkups; Mon-Fri 9-6). For exact pricing say the office will confirm.\n5. Keep responses SHORT — one or two sentences, conversational. Never lecture.\n6. Never invent appointment times. Never give medical advice beyond general guidance.\n7. If the caller is abusive or the request is outside dentistry, politely say you can only help with dental appointments and offer to take a message.","role":"system"}],"model":"gpt-4o-mini","provider":"openai","temperature":0.4,"toolIds":[]},"name":"BrightSmile Dental Receptionist (Template)","transcriber":{"language":"en","model":"nova-2","provider":"deepgram"},"voice":{"provider":"11labs","voiceId":"sarah"}}
+{
+  "analysisPlan": {
+    "minMessages": 2,
+    "structuredDataPlan": {
+      "enabled": true,
+      "schema": {
+        "properties": {
+          "appointmentDay": {
+            "description": "Preferred day for the appointment",
+            "type": "string"
+          },
+          "appointmentType": {
+            "description": "cleaning, emergency, checkup, etc.",
+            "type": "string"
+          },
+          "callerName": {
+            "type": "string"
+          },
+          "isEmergency": {
+            "description": "True if the caller describes severe pain, swelling, or trauma",
+            "type": "boolean"
+          },
+          "phoneNumber": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "artifactPlan": {
+    "recordingEnabled": true,
+    "transcriptPlan": {
+      "enabled": true
+    }
+  },
+  "backgroundSound": "office",
+  "firstMessage": "Hi, thanks for calling BrightSmile Dental Studio! This is Nora, the virtual receptionist. How can I help you today?",
+  "maxDurationSeconds": 600,
+  "model": {
+    "maxTokens": 300,
+    "messages": [
+      {
+        "content": "You are Nora, the friendly virtual receptionist for BrightSmile Dental Studio, a family dental clinic open Monday to Friday, 9am to 6pm.\n\nYour job:\n1. Greet callers warmly and find out why they are calling.\n2. If it is a dental EMERGENCY (severe pain, swelling, knocked-out or broken tooth, bleeding that will not stop): say you are flagging it as urgent, take their name and number, and tell them the dentist will call back within 15 minutes. If pain is extreme, advise them to consider urgent care.\n3. If they want to BOOK or RESCHEDULE: collect name, phone number, preferred day, and appointment type (cleaning, checkup, tooth pain, cosmetic). Confirm the details back. Tell them the office will confirm the exact time by text shortly.\n4. If they ask about SERVICES, PRICES, or HOURS: answer briefly (cleanings, fillings, whitening, checkups; Mon-Fri 9-6). For exact pricing say the office will confirm.\n5. Keep responses SHORT \u2014 one or two sentences, conversational. Never lecture.\n6. Never invent appointment times. Never give medical advice beyond general guidance.\n7. If the caller is abusive or the request is outside dentistry, politely say you can only help with dental appointments and offer to take a message.\n8. When you have the caller's name, phone, preferred day, and appointment type, confirm them back and then call the bookAppointment tool.\n9. At the start of the call, the greeting already plays \u2014 if asked, mention calls may be recorded for quality.",
+        "role": "system"
+      }
+    ],
+    "model": "gpt-4o-mini",
+    "provider": "openai",
+    "temperature": 0.4,
+    "toolIds": [],
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "bookAppointment",
+          "description": "Book or request a dental appointment. Call this when the caller has given their name, phone number, preferred day, and appointment type. Confirm the details with the caller BEFORE calling.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "callerName": {
+                "type": "string",
+                "description": "Caller's full name"
+              },
+              "phoneNumber": {
+                "type": "string",
+                "description": "Caller's phone number"
+              },
+              "preferredDay": {
+                "type": "string",
+                "description": "Preferred day, e.g. Tuesday"
+              },
+              "appointmentType": {
+                "type": "string",
+                "description": "cleaning, checkup, tooth pain, cosmetic, emergency"
+              },
+              "isEmergency": {
+                "type": "boolean",
+                "description": "True if urgent pain/trauma"
+              }
+            },
+            "required": [
+              "callerName",
+              "phoneNumber",
+              "preferredDay",
+              "appointmentType"
+            ]
+          }
+        },
+        "server": {
+          "url": "https://REPLACE_WITH_YOUR_WEBHOOK_URL/vapi-booking",
+          "timeoutSeconds": 10,
+          "headers": {
+            "X-Vapi-Secret": "REPLACE_WITH_SHARED_SECRET"
+          }
+        },
+        "messages": [
+          {
+            "type": "request-start",
+            "content": "Let me book that for you right now."
+          },
+          {
+            "type": "request-complete",
+            "content": "You're booked in! The office will text you to confirm the exact time."
+          },
+          {
+            "type": "request-failed",
+            "content": "I couldn't complete the booking just now, but I've saved your details and the office will call you back shortly."
+          }
+        ]
+      }
+    ]
+  },
+  "name": "BrightSmile Dental Receptionist (Template)",
+  "transcriber": {
+    "language": "en",
+    "model": "nova-2",
+    "provider": "deepgram"
+  },
+  "voice": {
+    "provider": "11labs",
+    "voiceId": "sarah"
+  },
+  "voicemailDetection": {
+    "provider": "vapi",
+    "voicemailDetectionTypes": [
+      "machine"
+    ],
+    "enabled": true,
+    "machineDetectionTimeout": 30,
+    "machineDetectionSpeechThreshold": 1.0,
+    "machineDetectionSilenceTimeout": 1500
+  },
+  "voicemailMessage": "Hi, you've reached BrightSmile Dental Studio. We're sorry we missed you \u2014 please leave your name, number, and reason for calling, and we'll call you back within the hour. Thank you!",
+  "endCallMessage": "Thanks for calling BrightSmile Dental Studio! You'll get a confirmation text shortly. Have a great day!",
+  "backgroundDenoisingEnabled": true
+}

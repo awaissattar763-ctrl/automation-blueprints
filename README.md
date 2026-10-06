@@ -8,7 +8,9 @@ Every template is labeled honestly: connect your own API credentials after impor
 | File | What it does |
 |---|---|
 | `n8n-missed-call-sms-crm.json` | Missed call → instant apology SMS → contact saved to GoHighLevel → Slack alert to owner |
-| `n8n-ai-lead-qualifier.json` | New lead → GPT-4o-mini scores it 0-100 → hot leads get an instant personal email, everyone is logged to Google Sheets |
+| `n8n-ai-lead-qualifier.json` | New lead → input validation → GPT-4o-mini scores it 0-100 → hot leads get an instant personal email, everyone is logged to Google Sheets |
+| `n8n-whatsapp-ai-auto-reply.json` | WhatsApp message → AI replies in the customer's language → booking/price/urgent intents escalate to the owner instantly (Meta Cloud API free tier) |
+| `n8n-error-handler.json` | **Attach to every workflow** (Settings → Error Workflow): any node failure → instant Slack + email alert. No silent failures. |
 
 **n8n cost:** self-hosted Community = **free forever**, unlimited executions (needs a server ~$5-15/mo, or Docker locally). Cloud Starter = €20/mo (2,500 executions). 14-day Cloud trial is free.
 
@@ -31,8 +33,11 @@ Every template is labeled honestly: connect your own API credentials after impor
 ## Voice AI (`/vapi`) — Vapi + Twilio
 | File | What it does |
 |---|---|
-| `vapi-dental-receptionist.json` | Full voice-receptionist assistant config: greeting → emergency triage → appointment booking → post-call data extraction |
+| `vapi-dental-receptionist.json` | Full voice-receptionist assistant config: greeting → emergency triage → appointment booking **via bookAppointment tool** → post-call data extraction; voicemail handling, end-call message, noise reduction |
 | `VAPI-TWILIO-SETUP.md` | Complete setup: free accounts, real phone number, test call, costs, and the 60-second client demo script |
+
+## Standards review
+**[REVIEW.md](REVIEW.md)** — every template audited against production standards (error handling, input validation, idempotency, SMS compliance, monitoring). All critical and high gaps fixed.
 
 **Voice cost to try:** **$0** — Vapi $10 free credit (no card) + Twilio $15 trial credit. Live cost after: ~$0.08-0.13/min (~$0.25-0.40 per 3-min call).
 
